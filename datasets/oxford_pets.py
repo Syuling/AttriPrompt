@@ -2,7 +2,6 @@ import os
 import pickle
 import math
 import random
-import numpy as np
 from collections import defaultdict
 
 from dassl.data.datasets import DATASET_REGISTRY, Datum, DatasetBase
@@ -34,30 +33,36 @@ class OxfordPets(DatasetBase):
         num_shots = cfg.DATASET.NUM_SHOTS
         # if num_shots >= 1:
         seed = cfg.SEED
-        preprocessed = os.path.join(self.split_fewshot_dir, f"shot_{num_shots}-seed_{seed}.pkl")
+        head = cfg.Head
+        cont_dis = cfg.cont_dis
+        alpha = cfg.alpha
+     
+        if cont_dis==1:
+            preprocessed = os.path.join(self.split_fewshot_dir, f"cont_dis_{alpha}_shot_{num_shots}-{head}-seed_{seed}.pkl")
+        else:
+            preprocessed = os.path.join(self.split_fewshot_dir, f"shot_{num_shots}-{head}-seed_{seed}.pkl")
         
         if os.path.exists(preprocessed):
             print(f"Loading preprocessed few-shot data from {preprocessed}")
             with open(preprocessed, "rb") as file:
                 data = pickle.load(file)
-                train, val = data["train"], data["rem_train"], data["val"]
+                train, rem_train, val = data["train"], data["rem_train"], data["val"]
         else:
-            
             if num_shots >= 1:
-                train= self.generate_fewshot_dataset(train, num_shots=num_shots)
+                train, rem_train = self.generate_fewshot_dataset(train, num_shots=num_shots)
             else:
-                imbalanced_shot = [1,2,4,8,16]
-                train= self.generate_new_fewshot_dataset(train, num_shots=num_shots,imbalanced_shot=imbalanced_shot)
+                train, rem_train = self.generate_new_fewshot_dataset(train, num_shots=num_shots,head=head,cont_dis=cont_dis,alpha=alpha,seed=seed)
+                val = self.generate_fewshot_dataset(val, num_shots=min(num_shots, 4))
             val = self.generate_fewshot_dataset(val, num_shots=min(num_shots, 4))
-            data = {"train": train, "val": val}
+            data = {"train": train, "rem_train": rem_train, "val": val}
             print(f"Saving preprocessed few-shot data to {preprocessed}")
             with open(preprocessed, "wb") as file:
                 pickle.dump(data, file, protocol=pickle.HIGHEST_PROTOCOL)
 
         subsample = cfg.DATASET.SUBSAMPLE_CLASSES
-        train, val, test = OxfordPets.subsample_classes(train, val, test, subsample=subsample)
+        rem_train, train, val, test = OxfordPets.subsample_classes(rem_train,train, val, test, subsample=subsample)
 
-        super().__init__(train_x=train, val=val, test=test)
+        super().__init__(rem_train=rem_train,train_x=train, val=val, test=test)
 
     def read_data(self, split_file):
         filepath = os.path.join(self.anno_dir, split_file)
@@ -223,57 +228,3 @@ class OxfordPets(DatasetBase):
             output.append(dataset_new)
         
         return output
-
-    def generate_new_fewshot_dataset(
-        self, *data_sources, num_shots=-1, imbalanced_shot,repeat=False ):
-        """Generate a few-shot dataset (typically for the training set).
-
-        This function is useful when one wants to evaluate a model
-        in a few-shot learning setting where each class only contains
-        a small number of images.
-
-        Args:
-            data_sources: each individual is a list containing Datum objects.
-            num_shots (int): number of instances per class to sample.
-            repeat (bool): repeat images if needed (default: False).
-        """
-        if num_shots == 0:
-            if len(data_sources) == 1:
-                return data_sources[0], data_sources[0]
-            return data_sources, data_sources
-
-        print(f"Creating a {num_shots}-shot dataset")
-
-        output = []
-        res_output = []
-
-        for data_source in data_sources:
-            tracker = self.split_dataset_by_label(data_source)
-            dataset = []
-            remaining_dataset = []  # 用于存储剩余样本
-
-            rand_index = np.random.randint(0, 5, size=(len(tracker),)) 
-            shot_index = imbalanced_shot[rand_index]
-            for label, items in tracker.items():
-                num_shots = shot_index[label]
-                if len(items) >= num_shots:
-                    sampled_items = random.sample(items, num_shots)
-                    remaining_items = [item for item in items if item not in sampled_items]
-                else:
-                    if repeat:
-                        sampled_items = random.choices(items, k=num_shots)
-                        remaining_items = items  # 全部样本都保留
-                    else:
-                        sampled_items = items
-                        remaining_items = []  # 没有剩余样本
-
-                dataset.extend(sampled_items)
-                remaining_dataset.extend(remaining_items)
-
-            output.append(dataset)
-            res_output.append(remaining_dataset)
-
-        if len(output) == 1:
-            return output[0], res_output[0]
-
-        return output, res_output

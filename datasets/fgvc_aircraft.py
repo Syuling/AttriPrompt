@@ -33,29 +33,36 @@ class FGVCAircraft(DatasetBase):
         num_shots = cfg.DATASET.NUM_SHOTS
         # if num_shots >= 1:
         seed = cfg.SEED
-        preprocessed = os.path.join(self.split_fewshot_dir, f"shot_{num_shots}-seed_{seed}.pkl")
+        head = cfg.Head
+        cont_dis = cfg.cont_dis
+        alpha = cfg.alpha
+     
+        if cont_dis==1:
+            preprocessed = os.path.join(self.split_fewshot_dir, f"cont_dis_{alpha}_shot_{num_shots}-{head}-seed_{seed}.pkl")
+        else:
+            preprocessed = os.path.join(self.split_fewshot_dir, f"shot_{num_shots}-{head}-seed_{seed}.pkl")
         
         if os.path.exists(preprocessed):
             print(f"Loading preprocessed few-shot data from {preprocessed}")
             with open(preprocessed, "rb") as file:
                 data = pickle.load(file)
-                train, val = data["train"], data["val"]
+                train, rem_train, val = data["train"], data["rem_train"], data["val"]
         else:
             if num_shots >= 1:
-                train= self.generate_fewshot_dataset(train, num_shots=num_shots)
+                train, rem_train = self.generate_fewshot_dataset(train, num_shots=num_shots)
             else:
-                imbalanced_shot = [1,2,4,8,16]
-                train= OxfordPets.generate_new_fewshot_dataset(train, num_shots=num_shots,imbalanced_shot=imbalanced_shot)
+                train, rem_train = self.generate_new_fewshot_dataset(train, num_shots=num_shots,head=head,cont_dis=cont_dis,alpha=alpha,seed=seed)
+                val = self.generate_fewshot_dataset(val, num_shots=min(num_shots, 4))
             val = self.generate_fewshot_dataset(val, num_shots=min(num_shots, 4))
-            data = {"train": train, "val": val}
+            data = {"train": train, "rem_train": rem_train, "val": val}
             print(f"Saving preprocessed few-shot data to {preprocessed}")
             with open(preprocessed, "wb") as file:
                 pickle.dump(data, file, protocol=pickle.HIGHEST_PROTOCOL)
 
         subsample = cfg.DATASET.SUBSAMPLE_CLASSES
-        train, val, test = OxfordPets.subsample_classes(train, val, test, subsample=subsample)
+        rem_train, train, val, test = OxfordPets.subsample_classes(rem_train,train, val, test, subsample=subsample)
 
-        super().__init__(train_x=train, val=val, test=test)
+        super().__init__(rem_train=rem_train,train_x=train, val=val, test=test)
 
     def read_data(self, cname2lab, split_file):
         filepath = os.path.join(self.dataset_dir, split_file)
