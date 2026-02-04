@@ -25,7 +25,7 @@ bash ./scripts/attriprompt/main_attri.sh
 ```
 
 ##Other VLMs 
-We also provide the versions to migrate AttriPrompt to other VLMs, including BLIP(https://github.com/salesforce/BLIP). If you want to train, you need to download the pre trained model parameters (ViT-B/16) in advance. Then, using
+We also provide the versions to migrate AttriPrompt to other VLMs, including [BLIP](https://github.com/salesforce/BLIP). If you want to train, you need to download the pre trained model parameters (ViT-B/16) in advance. Then, using
 
 ```
 bash ./scripts/attriprompt/main_attri_blip.sh
