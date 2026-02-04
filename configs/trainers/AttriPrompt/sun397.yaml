@@ -14,7 +14,7 @@ INPUT:
 
 OPTIM:
   NAME: "adam"
-  LR: 0.00125
+  LR: 0.0005
   MAX_EPOCH: 50
   LR_SCHEDULER: "cosine"
   WARMUP_EPOCH: 1
@@ -26,7 +26,9 @@ TRAIN:
 
 LOSS:
   ALPHA: 0.3
-  BETA: 0.4
+  BETA: 0.5
+  S: 24
+  M: 0.5
 
 MODEL:
   BACKBONE:

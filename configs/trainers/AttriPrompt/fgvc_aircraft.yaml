@@ -2,7 +2,7 @@ DATALOADER:
   TRAIN_X:
     BATCH_SIZE: 4
   TEST:
-    BATCH_SIZE: 4
+    BATCH_SIZE: 16
   NUM_WORKERS: 8
 
 INPUT:
@@ -31,4 +31,6 @@ LOSS:
 MODEL:
   BACKBONE:
     NAME: "ViT-B/16"
+  # NUM_PROMPT: 10
+  # TOP_K: 5
 
