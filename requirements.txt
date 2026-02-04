@@ -1,0 +1,12 @@
+ftfy
+regex
+tqdm
+diffusers<=0.16.0
+# torch==2.0.1
+# torchvision==0.15.2
+yacs
+tensorboard
+tabulate
+gdown
+wilds
+numpy==1.24.1

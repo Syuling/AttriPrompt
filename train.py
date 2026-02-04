@@ -9,10 +9,32 @@ from dassl.engine import build_trainer
 import datasets.oxford_pets
 import datasets.oxford_flowers
 import datasets.fgvc_aircraft
+import datasets.dtd
+import datasets.eurosat
 import datasets.stanford_cars
+import datasets.food101
+import datasets.sun397
+import datasets.caltech101
+import datasets.ucf101
+import datasets.imagenet
+
+import datasets.imagenet_sketch
+import datasets.imagenetv2
+import datasets.imagenet_a
+import datasets.imagenet_r
 
 
-import trainers.AttriPrompt
+
+import trainers.attriprompt
+import trainers.cocoop
+import trainers.coop
+import trainers.maple
+import trainers.baseclip_graph_v1
+import trainers.prograd
+import trainers.taskres
+import trainers.lamm
+# import trainers.attriprompt_blip
+
 
 
 def print_args(args, cfg):
@@ -65,6 +87,16 @@ def reset_cfg(cfg, args):
 
     if args.num_prompt:
         cfg.MODEL.NUM_PROMPT = args.num_prompt
+    
+    if args.Head:
+        cfg.Head = args.Head
+    
+    if args.cont_dis is not None:
+        cfg.cont_dis = args.cont_dis
+
+    if args.alpha is not None:
+        cfg.alpha = args.alpha
+
 
 
 
@@ -89,6 +121,17 @@ def extend_cfg(cfg):
     cfg.TRAINER.COOP.CLASS_TOKEN_POSITION = "end"  # 'middle' or 'end' or 'front'
     cfg.TRAINER.COOP.TRAIN_TYPE="freeze"
 
+    cfg.num_prompt = 10
+    cfg.top_k = 5
+    cfg.PROMPT_DEPTH_VISION = 9
+    cfg.PROMPT_DEPTH_TEXT = 9
+    cfg.N_CTX_VISION = 4
+    cfg.N_CTX_TEXT = 4
+
+    cfg.distributed = False
+    cfg.local_rank = 0
+    # cfg.rank = 0
+    cfg.world_size = 2
     
     cfg.TRAINER.COCOOP = CN()
     cfg.TRAINER.COCOOP.N_CTX = 16  # number of context vectors
@@ -117,7 +160,28 @@ def extend_cfg(cfg):
     cfg.TRAINER.ATTRIPROMPT.CLASS_TOKEN_POSITION = "end"  # 'middle' or 'end' or 'front'
     cfg.TRAINER.ATTRIPROMPT.TRAIN_TYPE="freeze"
     cfg.TRAINER.ATTRIPROMPT.PROMPT_DEPTH_VISION = 9
+    cfg.TRAINER.ATTRIPROMPT.PROMPT_DEPTH_TEXT = 9
     cfg.TRAINER.ATTRIPROMPT.N_CTX_VISION = 4
+    cfg.TRAINER.ATTRIPROMPT.N_CTX_TEXT = 4
+
+    cfg.TRAINER.ATPROMPT = CN()
+    cfg.TRAINER.ATPROMPT.USE_ATPROMPT = False
+    cfg.TRAINER.ATPROMPT.N_ATT1 = 4
+    cfg.TRAINER.ATPROMPT.N_ATT2 = 4
+    cfg.TRAINER.ATPROMPT.N_ATT3 = 4
+    cfg.TRAINER.ATPROMPT.ATT_NUM = 0
+    cfg.TRAINER.ATPROMPT.ATT1_TEXT = "none"
+    cfg.TRAINER.ATPROMPT.ATT2_TEXT = "none"
+    cfg.TRAINER.ATPROMPT.ATT3_TEXT = "none"
+    
+    cfg.TRAINER.TaskRes = CN()
+    cfg.TRAINER.TaskRes.N_CTX = 16  # number of context vectors
+    cfg.TRAINER.TaskRes.CSC = False  # class-specific context
+    cfg.TRAINER.TaskRes.CTX_INIT = ""  # initialization words
+    cfg.TRAINER.TaskRes.PREC = "fp16"  # fp16, fp32, amp
+    cfg.TRAINER.TaskRes.CLASS_TOKEN_POSITION = "end"  # 'middle' or 'end' or 'front'
+    cfg.TRAINER.TaskRes.RESIDUAL_SCALE = 1.0
+    cfg.TRAINER.TaskRes.ENHANCED_BASE = args.enhanced_base
 
 def setup_cfg(args):
     cfg = get_cfg_default()
@@ -158,13 +222,13 @@ def main(args):
 
     trainer = build_trainer(cfg)
 
-    if args.eval_only:
-        trainer.load_model(args.model_dir, epoch=args.load_epoch)
-        trainer.test()
-        return
+    # if args.eval_only:
+    #     trainer.load_model(args.model_dir, epoch=args.load_epoch)
+    #     trainer.test()
+    #     return
 
-    if not args.no_train:
-        trainer.train()
+    # if not args.no_train:
+    trainer.train()
 
 
 if __name__ == "__main__":
@@ -181,10 +245,19 @@ if __name__ == "__main__":
         "--seed", type=int, default=-1, help="only positive value enables a fixed seed"
     )
     parser.add_argument(
-        "--num_prompt", type=int, default=10, help="only positive value enables a fixed seed"
+        "--Head", type=int, default=16, help="only positive value enables a fixed head"
     )
     parser.add_argument(
-        "--top_k", type=int, default=3, help="only positive value enables a fixed seed"
+        "--cont_dis", type=int, default=0, help="continueous distribution or not", 
+    )
+    parser.add_argument(
+        "--alpha", type=float, default=0.0, help="the variance of the continuous distribution"
+    )
+    parser.add_argument(
+        "--num_prompt", type=int, default=10, help="number of prompts"
+    )
+    parser.add_argument(
+        "--top_k", type=int, default=3, help="number of top_k"
     )
     parser.add_argument(
         "--source-domains", type=str, nargs="+", help="source domains for DA/DG"
