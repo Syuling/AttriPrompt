@@ -24,14 +24,14 @@ For all dataset training, you can use
 bash ./scripts/attriprompt/main_attri.sh
 ```
 
-##Other VLMs 
+## Other VLMs 
 We also provide the versions to migrate AttriPrompt to other VLMs, including [BLIP](https://github.com/salesforce/BLIP). If you want to train, you need to download the pre trained model parameters (ViT-B/16) in advance. Then, using
 
 ```
 bash ./scripts/attriprompt/main_attri_blip.sh
 ```
 
-##Other Prompt-tuning Models 
+## Other Prompt-tuning Models 
 We have also integrated many other prompt tuning methods, please refer to their website for detailed training details.
 
 
